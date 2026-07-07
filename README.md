@@ -255,3 +255,15 @@ npm run build
 ```
 
 If you are changing the scanning logic, keep the test fixtures small and explicit. The tool is more useful when it stays opinionated.
+
+## Contributing
+
+`msw-inspector` is open to focused contributions that improve real MSW coverage workflows. The strongest issues include a small handler/API-call example, the command that was run, and the expected coverage result.
+
+Start with [CONTRIBUTING.md](./CONTRIBUTING.md) and the [roadmap](./ROADMAP.md). Good first contributions include framework examples, focused scanner fixtures, clearer unsupported-pattern messages, and docs that help teams add the CLI to CI.
+
+Current open-source focus:
+
+- Make adoption simple for Vite, Next.js, Vitest, Playwright, and GitHub Actions users.
+- Improve static scanner precision without guessing dynamic runtime behavior.
+- Keep the JSON report and GitHub Action output stable enough for CI.

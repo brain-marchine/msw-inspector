@@ -1,0 +1,26 @@
+name: Documentation
+description: Request or propose README, example, or usage documentation.
+title: "Docs: "
+labels:
+  - documentation
+  - "area: docs"
+body:
+  - type: textarea
+    id: gap
+    attributes:
+      label: Documentation gap
+      description: What was confusing, missing, or hard to apply?
+    validations:
+      required: true
+  - type: textarea
+    id: target
+    attributes:
+      label: Suggested fix
+      description: Link the section or describe the example that would help.
+    validations:
+      required: true
+  - type: input
+    id: stack
+    attributes:
+      label: Relevant stack
+      description: "Optional. Example: Vite, Next.js, Vitest, Playwright, axios."

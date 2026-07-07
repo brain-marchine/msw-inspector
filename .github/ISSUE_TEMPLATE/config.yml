@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Roadmap
+    url: https://github.com/felmonon/msw-inspector/blob/main/ROADMAP.md
+    about: Check the current direction before proposing larger changes.

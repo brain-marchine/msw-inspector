@@ -1,0 +1,33 @@
+name: Contributor task
+description: Maintainer-scoped task for contributors.
+title: "Task: "
+labels:
+  - help wanted
+  - "status: ready"
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: Task
+      description: What should be changed?
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Likely files
+      description: Point contributors to the relevant source, test, or docs files.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the concrete checks that make this done.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Add examples, related issues, or constraints.
