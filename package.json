@@ -53,9 +53,9 @@
     "ts-morph": "^27.0.2"
   },
   "devDependencies": {
-    "@types/node": "^24.5.2",
+    "@types/node": "^26.1.0",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.0.18"
   }
 }
