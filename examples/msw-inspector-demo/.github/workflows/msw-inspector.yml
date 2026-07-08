@@ -1,0 +1,22 @@
+name: msw coverage
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run inspect:json
+      - uses: felmonon/msw-inspector-action@v1
+        with:
+          summary-file: msw-inspector.json
+          comment: true
+          annotate: true
