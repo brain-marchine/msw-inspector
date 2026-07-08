@@ -14,7 +14,16 @@ export function formatCoverageReport(report: CoverageReport): string {
 
   if (report.unsupported.length > 0) {
     lines.push('', `${pc.yellow('!')} ${report.unsupported.length} unsupported patterns skipped`)
+    const shown = report.unsupported.slice(0, 5)
+    for (const pattern of shown) {
+      lines.push(
+        `  ${pattern.location.filePath}:${pattern.location.line} (${pattern.kind}) — ${pattern.reason}`,
+      )
+    }
+    const remaining = report.unsupported.length - shown.length
+    if (remaining > 0) {
+      lines.push(`  ...and ${remaining} more`)
+    }
   }
-
   return lines.join('\n')
 }
