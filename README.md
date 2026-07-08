@@ -115,7 +115,9 @@ npx msw-inspector \
   --format text
 ```
 
-For a copy-paste Vite + Vitest + MSW setup, see [`docs/examples/vite-vitest.md`](docs/examples/vite-vitest.md).
+For copy-paste setups, see [`docs/examples/vite-vitest.md`](docs/examples/vite-vitest.md)
+for Vite + Vitest and [`docs/examples/nextjs.md`](docs/examples/nextjs.md) for
+Next.js.
 
 Common CI gates:
 
