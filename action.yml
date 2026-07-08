@@ -5,12 +5,19 @@ inputs:
   summary-file:
     description: Path to the JSON report produced by msw-inspector.
     required: true
+  baseline-file:
+    description: Optional previous JSON report used to show coverage delta.
+    required: false
   github-token:
     description: GitHub token used for sticky PR comments.
     required: false
     default: ${{ github.token }}
   comment:
     description: Whether to create or update a sticky PR comment.
+    required: false
+    default: 'false'
+  annotate:
+    description: Whether to add GitHub annotations for unmocked, stale, and unsupported findings.
     required: false
     default: 'false'
   comment-title:
@@ -24,14 +31,20 @@ inputs:
 outputs:
   coverage-pct:
     description: Coverage percentage from the summary report.
+  coverage-delta:
+    description: Coverage percentage point delta versus baseline-file, when provided.
   mocked-calls:
     description: Number of API calls covered by handlers.
   total-calls:
     description: Total API call count in the report.
   unmocked-count:
     description: Count of unmocked API calls.
+  new-unmocked-count:
+    description: Count of unmocked API calls not present in the baseline report.
   stale-count:
     description: Count of stale handlers.
+  new-stale-count:
+    description: Count of stale handlers not present in the baseline report.
   covered-handlers:
     description: Number of handlers matched by at least one API call.
   total-handlers:
