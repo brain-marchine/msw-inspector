@@ -1,6 +1,6 @@
 {
   "name": "msw-inspector-cli",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Find gaps in your MSW mock coverage.",
   "license": "MIT",
   "private": false,
