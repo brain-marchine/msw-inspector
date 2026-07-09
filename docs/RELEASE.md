@@ -43,7 +43,7 @@ Update `CHANGELOG.md` before publishing.
 4. Push the commit and tag.
 5. Publish to npm with `npm publish`.
 6. Create a GitHub release from the tag with the changelog notes.
-7. If `src/github-action/` changed, refresh the action repository: run `npm run build`, copy `dist/github-action/index.js` into `felmonon/msw-inspector-action`, commit there, and move the `v1` tag to the new release.
+7. If `src/github-action/` changed, refresh the action repository: run `npm run build:action`, copy `dist/action/index.js` to `dist/index.js` in `felmonon/msw-inspector-action` (the self-contained bundle `action.yml` points at), commit there, and move the `v1` tag to the new release.
 8. Open or update a follow-up roadmap issue for the next release.
 
 Do not publish from a dirty worktree unless the only changes are intentional release files.
