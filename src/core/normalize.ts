@@ -150,10 +150,19 @@ export function createRecordId(parts: string[]): string {
   return parts.join(':')
 }
 
-export function normalizeLocation(filePath: string, line: number, column: number): SourceLocation {
+export function normalizeLocation(cwd: string, filePath: string, line: number, column: number): SourceLocation {
   return {
-    filePath: path.normalize(filePath),
+    filePath: toRepoRelativePath(cwd, filePath),
     line,
     column,
   }
+}
+
+export function toRepoRelativePath(cwd: string, filePath: string): string {
+  const relative = path.relative(cwd, path.normalize(filePath))
+  if (relative === '') {
+    return '.'
+  }
+
+  return relative.split(path.sep).join('/')
 }

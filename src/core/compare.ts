@@ -117,22 +117,36 @@ function methodsMatch(call: ApiCallRecord, handler: HandlerRecord): boolean {
   return handler.method === 'ALL' || call.method === handler.method
 }
 
-function findMatch(call: ApiCallRecord, handlers: HandlerRecord[]): HandlerRecord | undefined {
-  return handlers.find((handler) => {
-    if (!methodsMatch(call, handler)) {
-      return false
-    }
-
-    if (handler.pattern.kind === 'path') {
-      return matchesPath(call, handler)
-    }
-
-    if (handler.pattern.kind === 'regexp') {
-      return matchesRegExp(call, handler)
-    }
-
+function handlerMatches(call: ApiCallRecord, handler: HandlerRecord): boolean {
+  if (!methodsMatch(call, handler)) {
     return false
-  })
+  }
+
+  if (handler.pattern.kind === 'path') {
+    return matchesPath(call, handler)
+  }
+
+  if (handler.pattern.kind === 'regexp') {
+    return matchesRegExp(call, handler)
+  }
+
+  return false
+}
+
+function findMatches(call: ApiCallRecord, handlers: HandlerRecord[]): HandlerRecord[] {
+  return handlers.filter((handler) => handlerMatches(call, handler))
+}
+
+function patternMatches(call: ApiCallRecord, handler: HandlerRecord): boolean {
+  if (handler.pattern.kind === 'path') {
+    return matchesPath(call, handler)
+  }
+
+  if (handler.pattern.kind === 'regexp') {
+    return matchesRegExp(call, handler)
+  }
+
+  return false
 }
 
 function percentage(numerator: number, denominator: number): number {
@@ -153,20 +167,44 @@ export function buildCoverageReport(input: {
   const usedHandlerIds = new Set<string>()
 
   for (const call of input.apiCalls) {
-    const handler = findMatch(call, input.handlers)
-    if (!handler) {
+    const matched = findMatches(call, input.handlers)
+    const [primary] = matched
+    if (!primary) {
       continue
     }
 
     matches.push({
       callId: call.id,
-      handlerId: handler.id,
+      handlerId: primary.id,
     })
     mockedCallIds.add(call.id)
-    usedHandlerIds.add(handler.id)
+    for (const handler of matched) {
+      usedHandlerIds.add(handler.id)
+    }
   }
 
-  const unmockedCallIds = input.apiCalls.filter((call) => !mockedCallIds.has(call.id)).map((call) => call.id)
+  // A call whose method could not be resolved statically may still hit a
+  // handler on the same path. Report it as ambiguous instead of unmocked, and
+  // keep the path-matching handlers out of the stale list: deleting a handler
+  // that likely serves this call is worse than leaving the call unresolved.
+  const unmockedCallIds: string[] = []
+  const ambiguousCallIds: string[] = []
+  for (const call of input.apiCalls) {
+    if (mockedCallIds.has(call.id)) {
+      continue
+    }
+
+    const pathMatched = call.method === 'UNKNOWN' ? input.handlers.filter((handler) => patternMatches(call, handler)) : []
+    if (pathMatched.length > 0) {
+      ambiguousCallIds.push(call.id)
+      for (const handler of pathMatched) {
+        usedHandlerIds.add(handler.id)
+      }
+    } else {
+      unmockedCallIds.push(call.id)
+    }
+  }
+
   const staleHandlerIds = input.handlers.filter((handler) => !usedHandlerIds.has(handler.id)).map((handler) => handler.id)
 
   return {
@@ -178,6 +216,7 @@ export function buildCoverageReport(input: {
     usedHandlerIds: [...usedHandlerIds],
     staleHandlerIds,
     unmockedCallIds,
+    ambiguousCallIds,
     unsupported: input.unsupported ?? [],
     summary: {
       mockedCalls: mockedCallIds.size,
@@ -186,6 +225,7 @@ export function buildCoverageReport(input: {
       totalHandlers: input.handlers.length,
       staleHandlers: staleHandlerIds.length,
       unmockedCalls: unmockedCallIds.length,
+      ambiguousCalls: ambiguousCallIds.length,
       percentage: percentage(mockedCallIds.size, input.apiCalls.length),
     },
   }

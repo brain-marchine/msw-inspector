@@ -104,9 +104,47 @@ describe('scanApiCalls', () => {
       ['axios', 'HEAD', '/accounts'],
       ['axios', 'PATCH', 'https://api.example.com/refresh'],
       ['axios', 'PATCH', 'https://api.example.com/mirror'],
+      ['fetch', 'PUT', '/request-literal'],
     ])
     expect(result.unsupported.map((item) => item.expressionText)).toEqual([
-      "fetch(new Request('/skip'))",
+      'fetch(new Request(randomUrl))',
+    ])
+  })
+
+  it('resolves fetch(new Request(...)) constructions', async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), 'msw-inspector-api-'))
+    const sourceDir = path.join(cwd, 'src')
+    await mkdir(sourceDir, { recursive: true })
+    await writeFile(
+      path.join(sourceDir, 'requests.ts'),
+      `
+        const saved = new Request('/saved', { method: 'delete' })
+        const dynamic = Math.random() > 0.5 ? '/a' : '/b'
+
+        export async function run() {
+          await fetch(new Request('/orders'))
+          await fetch(new Request('/orders', { method: 'post' }))
+          await fetch(new Request('/orders', { method: 'post' }), { method: 'patch' })
+          await fetch(saved)
+          await fetch(new Request(dynamic))
+        }
+      `,
+      'utf8',
+    )
+
+    const result = await scanApiCalls({
+      cwd,
+      sourceGlobs: ['src/**/*.ts'],
+    })
+
+    expect(result.apiCalls.map((call) => [call.method, call.pattern.normalized])).toEqual([
+      ['GET', '/orders'],
+      ['POST', '/orders'],
+      ['PATCH', '/orders'],
+      ['DELETE', '/saved'],
+    ])
+    expect(result.unsupported.map((item) => item.expressionText)).toEqual([
+      'fetch(new Request(dynamic))',
     ])
   })
 

@@ -7,6 +7,7 @@ const FETCH_INIT = { method: 'patch' }
 const REQUEST_CONFIG = { url: USERS_PATH, method: 'get', baseURL: API_BASE }
 const CONFIG = { url: SEARCH_PATH, method: 'patch', baseURL: API_BASE }
 const dynamicInit = Math.random() > 0.5 ? { method: 'put' } : undefined
+const randomUrl = Math.random() > 0.5 ? '/a' : '/b'
 const client = axios.create({ baseURL: API_BASE })
 const alias = client
 const mirror = alias
@@ -26,7 +27,8 @@ axios('/accounts', { method: 'head' })
 axios[verb]('/skip')
 axios.create({ baseURL: API_BASE }).patch('/refresh')
 mirror.patch('/mirror')
-fetch(new Request('/skip'))
+fetch(new Request('/request-literal', { method: 'put' }))
+fetch(new Request(randomUrl))
 
 {
   const fetch = vi.fn()

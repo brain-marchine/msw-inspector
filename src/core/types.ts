@@ -55,6 +55,7 @@ export interface CoverageSummary {
   totalHandlers: number
   staleHandlers: number
   unmockedCalls: number
+  ambiguousCalls: number
   percentage: number
 }
 
@@ -72,6 +73,7 @@ export interface CoverageReport {
   usedHandlerIds: string[]
   staleHandlerIds: string[]
   unmockedCallIds: string[]
+  ambiguousCallIds: string[]
   unsupported: UnsupportedPattern[]
   summary: CoverageSummary
 }

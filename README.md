@@ -65,8 +65,14 @@ $ npx msw-inspector --base-url https://api.example.com --min-coverage 80
 ✓ 0 stale mocks
 
 Coverage: 66.7% (4/6)
+
+Unmocked API calls:
+  POST /api/chat  src/chat.ts:12
+  GET /api/profile  src/profile.ts:33
 ! 1 unsupported patterns skipped
 ```
+
+Text output lists up to 10 unmocked calls and stale handlers with their source locations. Use `--limit <count>` to show more or fewer.
 
 Use `--format json` when you want the full report for CI, dashboards, or the companion GitHub Action.
 
@@ -125,7 +131,19 @@ Common CI gates:
 npx msw-inspector --min-coverage 90
 npx msw-inspector --fail-on-unmocked
 npx msw-inspector --fail-on-stale
+npx msw-inspector --fail-on-empty
 ```
+
+`--fail-on-empty` fails when the scan finds no handlers and no API calls, which usually means misconfigured globs or `--cwd`; an empty scan always prints a warning to stderr.
+
+### Exit codes
+
+| Code | Meaning |
+| ---: | --- |
+| 0 | Analysis ran; no enabled gate failed. |
+| 1 | A gate failed (`--min-coverage`, `--fail-on-unmocked`, `--fail-on-stale`, `--fail-on-empty`) or the analysis errored. |
+| 2 | Usage error: unknown flag or invalid value for `--format`, `--min-coverage`, or `--limit`. |
+
 
 ## JSON report
 
@@ -141,6 +159,7 @@ The JSON report written by `--report-file` includes a stable schema version and 
     "totalHandlers": 23,
     "staleHandlers": 3,
     "unmockedCalls": 8,
+    "ambiguousCalls": 0,
     "percentage": 74.2
   }
 }
@@ -177,6 +196,10 @@ Dogfood summary:
 
 That run surfaced a complete mock gap across auth, billing, and AI endpoints instead of a single missing handler.
 
+All file locations in the report are relative to the scanned directory (`--cwd`), using forward slashes on every platform, so reports are stable across machines and safe to store as CI baselines.
+
+The full report format is documented in [docs/report-schema.md](./docs/report-schema.md) and defined machine-readably in [schema/coverage-report.v1.json](./schema/coverage-report.v1.json), which ships with the npm package.
+
 ## Supported patterns
 
 The first release is intentionally narrow:
@@ -184,14 +207,16 @@ The first release is intentionally narrow:
 - `msw` `http.*` handlers
 - legacy `msw` `rest.*` handlers
 - handler matchers from string literals, static template literals, static `const`s, `new URL(...).href`, `new URL(...).toString()`, and `String(new URL(...))`
-- `fetch(...)`, `window.fetch(...)`, `globalThis.fetch(...)`
+- `fetch(...)`, `window.fetch(...)`, `globalThis.fetch(...)`, and `fetch(new Request(...))` with static arguments
 - common `axios` call shapes, including `axios.get(...)`, `axios.request(...)`, `axios(...)`, and same-file `axios.create(...)` instances
 
 Unsupported dynamic or ambiguous patterns are included in the report so you can decide whether to simplify the code, add explicit handlers, or ignore the pattern.
 
 ## GitHub Action
 
-The CLI ships with a matching GitHub Action wrapper in a separate repository: [`felmonon/msw-inspector-action`](https://github.com/felmonon/msw-inspector-action). It reads the JSON report that the CLI already produced, writes a job summary, and can optionally upsert one sticky PR comment.
+The canonical GitHub Action is [`felmonon/msw-inspector-action`](https://github.com/felmonon/msw-inspector-action). It reads the JSON report that the CLI already produced, writes a job summary, and can optionally upsert one sticky PR comment.
+
+The action's source lives in this repository under `src/github-action/`; its built bundle is vendored into the action repository at release time. This repository intentionally does not ship its own `action.yml` — always use `felmonon/msw-inspector-action` in workflows.
 
 Marketplace listing: [`MSW Inspector`](https://github.com/marketplace/actions/msw-inspector)
 
@@ -240,6 +265,7 @@ console.log(formatCoverageReport(report))
 - It does not resolve cross-file constants or imported axios instances.
 - It does not analyze GraphQL, WebSocket, or SSE handlers.
 - It reports dynamic or ambiguous patterns as unsupported instead of guessing.
+- Calls whose HTTP method cannot be resolved statically are reported as `ambiguousCalls` when their path matches a handler; they never count as mocked or unmocked, and `--fail-on-unmocked` ignores them.
 
 ## Project health
 

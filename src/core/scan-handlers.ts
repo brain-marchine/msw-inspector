@@ -73,17 +73,17 @@ export async function scanHandlers(options: AnalyzerOptions): Promise<HandlerSca
 
       const arg = call.getArguments()[0]
       if (!arg) {
-        unsupported.push(buildUnsupported(call, 'handler', 'handler call is missing a matcher argument'))
+        unsupported.push(buildUnsupported(cwd, call, 'handler', 'handler call is missing a matcher argument'))
         continue
       }
 
       const resolved = resolveHandlerMatcher(arg, context)
       if (!resolved) {
-        unsupported.push(buildUnsupported(call, 'handler', describeUnsupportedMatcher(arg, context)))
+        unsupported.push(buildUnsupported(cwd, call, 'handler', describeUnsupportedMatcher(arg, context)))
         continue
       }
 
-      const location = getLocation(sourceFile, call)
+      const location = getLocation(cwd, sourceFile, call)
       handlers.push({
         id: createRecordId([location.filePath, String(location.line), String(location.column), handlerMeta.source, handlerMeta.method, resolved.normalized]),
         method: handlerMeta.method,
@@ -477,9 +477,9 @@ function describeUnsupportedMatcher(node: import('ts-morph').Node, context: Stat
   return 'unable to statically resolve handler matcher'
 }
 
-function buildUnsupported(call: import('ts-morph').CallExpression, kind: 'handler' | 'api-call', reason: string): UnsupportedPattern {
+function buildUnsupported(cwd: string, call: import('ts-morph').CallExpression, kind: 'handler' | 'api-call', reason: string): UnsupportedPattern {
   const sourceFile = call.getSourceFile()
-  const location = getLocation(sourceFile, call)
+  const location = getLocation(cwd, sourceFile, call)
   return {
     kind,
     reason,
@@ -488,9 +488,9 @@ function buildUnsupported(call: import('ts-morph').CallExpression, kind: 'handle
   }
 }
 
-function getLocation(sourceFile: SourceFile, node: import('ts-morph').Node) {
+function getLocation(cwd: string, sourceFile: SourceFile, node: import('ts-morph').Node) {
   const { line, column } = sourceFile.getLineAndColumnAtPos(node.getStart())
-  return normalizeLocation(sourceFile.getFilePath(), line, column)
+  return normalizeLocation(cwd, sourceFile.getFilePath(), line, column)
 }
 
 function compareRecords(left: HandlerRecord, right: HandlerRecord): number {

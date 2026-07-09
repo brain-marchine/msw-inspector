@@ -44,6 +44,7 @@ export function renderJobSummary(report: CoverageReport): string {
   lines.push(`| Mocked API calls | ${report.summary.mockedCalls} / ${report.summary.totalCalls} |`)
   lines.push(`| Used handlers | ${report.summary.usedHandlers} / ${report.summary.totalHandlers} |`)
   lines.push(`| Unmocked API calls | ${report.summary.unmockedCalls} |`)
+  lines.push(`| Ambiguous API calls | ${report.summary.ambiguousCalls ?? 0} |`)
   lines.push(`| Stale handlers | ${report.summary.staleHandlers} |`)
 
   if (report.unsupported.length > 0) {
@@ -56,6 +57,7 @@ export function renderJobSummary(report: CoverageReport): string {
 
 export function renderStickyComment(report: CoverageReport, title = DEFAULT_COMMENT_TITLE, limit = DEFAULT_COMMENT_LIMIT): string {
   const unmocked = takeLabels(report.apiCalls, report.unmockedCallIds, formatApiCall, limit)
+  const ambiguous = takeLabels(report.apiCalls, report.ambiguousCallIds ?? [], formatApiCall, limit)
   const stale = takeLabels(report.handlers, report.staleHandlerIds, formatHandler, limit)
   const unsupported = report.unsupported.slice(0, limit).map(formatUnsupported)
 
@@ -72,6 +74,12 @@ export function renderStickyComment(report: CoverageReport, title = DEFAULT_COMM
     lines.push('')
     lines.push('### Unmocked API calls')
     lines.push(...unmocked.map((value) => `- ${value}`))
+  }
+
+  if (ambiguous.length > 0) {
+    lines.push('')
+    lines.push('### Ambiguous API calls')
+    lines.push(...ambiguous.map((value) => `- ${value}`))
   }
 
   if (stale.length > 0) {
@@ -147,6 +155,7 @@ export async function run(): Promise<void> {
     core.setOutput('mocked-calls', String(report.summary.mockedCalls))
     core.setOutput('total-calls', String(report.summary.totalCalls))
     core.setOutput('unmocked-count', String(report.summary.unmockedCalls))
+    core.setOutput('ambiguous-count', String(report.summary.ambiguousCalls ?? 0))
     core.setOutput('stale-count', String(report.summary.staleHandlers))
     core.setOutput('covered-handlers', String(report.summary.usedHandlers))
     core.setOutput('total-handlers', String(report.summary.totalHandlers))

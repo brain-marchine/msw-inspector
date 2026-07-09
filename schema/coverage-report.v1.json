@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/felmonon/msw-inspector/main/schema/coverage-report.v1.json",
+  "title": "msw-inspector coverage report (schemaVersion 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "handlers",
+    "apiCalls",
+    "matches",
+    "mockedCallIds",
+    "usedHandlerIds",
+    "staleHandlerIds",
+    "unmockedCallIds",
+    "ambiguousCallIds",
+    "unsupported",
+    "summary"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "handlers": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/handlerRecord" }
+    },
+    "apiCalls": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/apiCallRecord" }
+    },
+    "matches": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/coverageMatch" }
+    },
+    "mockedCallIds": { "$ref": "#/definitions/idList" },
+    "usedHandlerIds": { "$ref": "#/definitions/idList" },
+    "staleHandlerIds": { "$ref": "#/definitions/idList" },
+    "unmockedCallIds": { "$ref": "#/definitions/idList" },
+    "ambiguousCallIds": { "$ref": "#/definitions/idList" },
+    "unsupported": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/unsupportedPattern" }
+    },
+    "summary": { "$ref": "#/definitions/coverageSummary" }
+  },
+  "definitions": {
+    "idList": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "httpMethod": {
+      "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ALL", "UNKNOWN"]
+    },
+    "routePattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw", "kind", "normalized", "pathname", "origin"],
+      "properties": {
+        "raw": { "type": "string" },
+        "kind": { "enum": ["path", "regexp", "unknown"] },
+        "normalized": { "type": "string" },
+        "pathname": { "type": ["string", "null"] },
+        "origin": { "type": ["string", "null"] }
+      }
+    },
+    "sourceLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filePath", "line", "column"],
+      "properties": {
+        "filePath": {
+          "type": "string",
+          "description": "Relative to the scanned directory (--cwd), always with forward slashes."
+        },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "handlerRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "method", "pattern", "location", "source"],
+      "properties": {
+        "id": { "type": "string" },
+        "method": { "$ref": "#/definitions/httpMethod" },
+        "pattern": { "$ref": "#/definitions/routePattern" },
+        "location": { "$ref": "#/definitions/sourceLocation" },
+        "source": { "enum": ["msw-http", "msw-rest"] }
+      }
+    },
+    "apiCallRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "method", "pattern", "location", "source"],
+      "properties": {
+        "id": { "type": "string" },
+        "method": { "$ref": "#/definitions/httpMethod" },
+        "pattern": { "$ref": "#/definitions/routePattern" },
+        "location": { "$ref": "#/definitions/sourceLocation" },
+        "source": { "enum": ["fetch", "axios"] }
+      }
+    },
+    "coverageMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["callId", "handlerId"],
+      "properties": {
+        "callId": { "type": "string" },
+        "handlerId": { "type": "string" }
+      }
+    },
+    "unsupportedPattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "location", "expressionText"],
+      "properties": {
+        "kind": { "enum": ["handler", "api-call"] },
+        "reason": { "type": "string" },
+        "location": { "$ref": "#/definitions/sourceLocation" },
+        "expressionText": { "type": "string" }
+      }
+    },
+    "coverageSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mockedCalls",
+        "totalCalls",
+        "usedHandlers",
+        "totalHandlers",
+        "staleHandlers",
+        "unmockedCalls",
+        "ambiguousCalls",
+        "percentage"
+      ],
+      "properties": {
+        "mockedCalls": { "type": "integer", "minimum": 0 },
+        "totalCalls": { "type": "integer", "minimum": 0 },
+        "usedHandlers": { "type": "integer", "minimum": 0 },
+        "totalHandlers": { "type": "integer", "minimum": 0 },
+        "staleHandlers": { "type": "integer", "minimum": 0 },
+        "unmockedCalls": { "type": "integer", "minimum": 0 },
+        "ambiguousCalls": { "type": "integer", "minimum": 0 },
+        "percentage": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    }
+  }
+}

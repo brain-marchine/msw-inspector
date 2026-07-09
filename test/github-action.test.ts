@@ -68,6 +68,7 @@ const report = {
   usedHandlerIds: ['handler-1'],
   staleHandlerIds: ['handler-2'],
   unmockedCallIds: ['call-2'],
+  ambiguousCallIds: [],
   unsupported: [],
   summary: {
     mockedCalls: 1,
@@ -76,6 +77,7 @@ const report = {
     totalHandlers: 2,
     staleHandlers: 1,
     unmockedCalls: 1,
+    ambiguousCalls: 0,
     percentage: 50,
   },
 } satisfies CoverageReport
