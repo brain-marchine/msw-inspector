@@ -4,7 +4,7 @@ import path from 'node:path'
 import { Command, CommanderError } from 'commander'
 import { analyzeProject } from './core/analyze'
 import { DEFAULT_EXCLUDE_GLOBS, DEFAULT_HANDLER_GLOBS, DEFAULT_SOURCE_GLOBS } from './core/defaults'
-import { formatCoverageReport } from './core/format'
+import { DEFAULT_FORMAT_LIMIT, formatCoverageReport } from './core/format'
 
 export interface CliIo {
   stdout: (text: string) => void
@@ -33,6 +33,7 @@ export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<num
     .option('--exclude <globs...>', 'Exclude file globs.', DEFAULT_EXCLUDE_GLOBS)
     .option('--base-url <url>', 'Resolve relative handlers and calls against this base URL.')
     .option('--format <format>', 'Output format: text or json.', 'text')
+    .option('--limit <count>', 'Maximum unmocked/stale entries listed in text output.', String(DEFAULT_FORMAT_LIMIT))
     .option('--report-file <path>', 'Write the JSON report to a file.')
     .option('--min-coverage <percentage>', 'Fail if API mock coverage drops below this percentage.')
     .option('--fail-on-unmocked', 'Fail if any API call is unmocked.')
@@ -57,7 +58,7 @@ export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<num
       if (options.format === 'json') {
         io.stdout(`${json}\n`)
       } else {
-        io.stdout(`${formatCoverageReport(report)}\n`)
+        io.stdout(`${formatCoverageReport(report, { limit: Number(options.limit) })}\n`)
       }
 
       const minCoverage = options.minCoverage ? Number(options.minCoverage) : null

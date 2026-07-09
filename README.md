@@ -57,7 +57,18 @@ Text output looks like this:
 ✗ 3 stale mocks
 
 Coverage: 74% (23/31)
+
+Unmocked API calls:
+  POST /api/chat  src/chat.ts:12
+  GET /api/profile  src/profile.ts:33
+  … and 6 more
+
+Stale handlers:
+  GET /v1/legacy  src/mocks/handlers.ts:8
+  … and 2 more
 ```
+
+Text output lists up to 10 unmocked calls and stale handlers with their source locations. Use `--limit <count>` to show more or fewer.
 
 Here is a real run against `typejung.com`:
 
