@@ -5,7 +5,8 @@ on:
   pull_request:
 
 jobs:
-  test:
+  matrix-test:
+    name: test (${{ matrix.os }}, ${{ matrix.node }})
     strategy:
       fail-fast: false
       matrix:
@@ -33,3 +34,12 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Single required status check for the main-branch ruleset; gates on the matrix.
+  test:
+    needs: matrix-test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check matrix result
+        run: test "${{ needs.matrix-test.result }}" = "success"
