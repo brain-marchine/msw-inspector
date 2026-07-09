@@ -4,6 +4,7 @@ All notable changes to this project should be documented here.
 
 ## Unreleased
 
+- Declared the real Node.js requirement: `>=20` (the `commander` runtime dependency already required it, so `>=18.18` was never accurate).
 - Fixed stale-handler false positives: every handler matching a call is now marked used, not just the first.
 - Text output now lists unmocked API calls and stale handlers with file and line; `--limit` controls how many.
 - The CLI validates `--format`, `--min-coverage`, and `--limit` (usage errors exit 2), warns on empty scans, and supports `--fail-on-empty`. Exit codes are documented in the README.

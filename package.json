@@ -26,7 +26,7 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.18"
+    "node": ">=20"
   },
   "scripts": {
     "build": "tsup src/index.ts src/cli.ts src/github-action/index.ts --format cjs --dts --out-dir dist --clean",

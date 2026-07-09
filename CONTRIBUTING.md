@@ -17,7 +17,7 @@ Useful contribution areas:
 
 Requirements:
 
-- Node.js 18.18 or newer
+- Node.js 20 or newer
 - npm
 
 Install dependencies:
