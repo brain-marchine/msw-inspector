@@ -1,12 +1,25 @@
 # msw-inspector
 
-![npm version](https://img.shields.io/npm/v/msw-inspector-cli?label=npm)
-![CI](https://github.com/felmonon/msw-inspector/actions/workflows/ci.yml/badge.svg)
-![license](https://img.shields.io/github/license/felmonon/msw-inspector)
+[![npm version](https://img.shields.io/npm/v/msw-inspector-cli?label=npm)](https://www.npmjs.com/package/msw-inspector-cli)
+[![CI](https://github.com/felmonon/msw-inspector/actions/workflows/ci.yml/badge.svg)](https://github.com/felmonon/msw-inspector/actions/workflows/ci.yml)
+[![Node](https://img.shields.io/node/v/msw-inspector-cli)](https://www.npmjs.com/package/msw-inspector-cli)
+[![types](https://img.shields.io/npm/types/msw-inspector-cli)](https://www.npmjs.com/package/msw-inspector-cli)
+[![license](https://img.shields.io/github/license/felmonon/msw-inspector)](./LICENSE)
 
 Find gaps in your API mock coverage before they reach CI.
 
-MSW handlers drift. API calls get added without mocks, and old mocks stay behind after the code moves on. `msw-inspector` scans both sides, compares them, and reports what is covered, what is not, and what looks stale.
+`msw-inspector` scans your MSW handlers and your application API calls, compares both sides, and reports what is covered, what is unmocked, and which mocks look stale.
+
+## Why this exists
+
+Mock coverage usually decays quietly:
+
+- a feature adds `fetch('/billing')` but no matching MSW handler
+- an old handler survives after the app stops calling that endpoint
+- relative URLs and origin-specific URLs drift apart
+- CI can tell you tests passed, but not whether the API surface is still mocked
+
+`msw-inspector` makes that drift visible. It is intentionally static and conservative: when it cannot understand a dynamic pattern, it reports the pattern as unsupported instead of guessing.
 
 ## Install
 
@@ -16,7 +29,7 @@ npm install -D msw-inspector-cli
 
 The npm package is published as `msw-inspector-cli` because the original `msw-inspector` name is already taken on the registry. The installed binary remains `msw-inspector`.
 
-## CLI
+## Quick start
 
 Run it from the project root:
 
@@ -30,7 +43,73 @@ Or run it without installing first:
 npx msw-inspector-cli
 ```
 
-Useful flags:
+For CI, write the full report and fail on the rules that matter to your project:
+
+```bash
+npx msw-inspector \
+  --report-file msw-inspector.json \
+  --format json \
+  --min-coverage 80 \
+  --fail-on-unmocked
+```
+
+## Terminal demo
+
+Screenshot-friendly text output:
+
+```text
+$ npx msw-inspector --base-url https://api.example.com --min-coverage 80
+✓ 4 handlers found
+✓ 6 API calls found
+✗ 2 unmocked endpoints
+✓ 0 stale mocks
+
+Coverage: 66.7% (4/6)
+
+Unmocked API calls:
+  POST /api/chat  src/chat.ts:12
+  GET /api/profile  src/profile.ts:33
+! 1 unsupported patterns skipped
+```
+
+Text output lists up to 10 unmocked calls and stale handlers with their source locations. Use `--limit <count>` to show more or fewer.
+
+Use `--format json` when you want the full report for CI, dashboards, or the companion GitHub Action.
+
+## Matching example
+
+Given these handlers:
+
+```ts
+import { http } from 'msw'
+
+export const handlers = [
+  http.get('/users/:id', () => null),
+  http.post('/checkout', () => null),
+]
+```
+
+And these API calls:
+
+```ts
+import axios from 'axios'
+
+await fetch('https://api.example.com/users/123?include=profile')
+await axios.post('/checkout')
+await fetch('/billing')
+```
+
+`msw-inspector` reports two covered calls and one unmocked call. Route parameters and query strings are normalized, so `/users/:id` matches `/users/123?include=profile`.
+
+If your app uses relative URLs but you want origin-aware matching, set `--base-url`:
+
+```bash
+npx msw-inspector --base-url https://api.example.com
+```
+
+That resolves relative handlers and API calls against one canonical origin, which is useful when the same pathname exists on multiple backends.
+
+## Useful flags
 
 ```bash
 npx msw-inspector \
@@ -42,9 +121,20 @@ npx msw-inspector \
   --format text
 ```
 
-The CLI prints a human-readable summary by default. Use `--format json` when you want the full report for CI or a downstream action.
+For copy-paste setups, see [`docs/examples/vite-vitest.md`](docs/examples/vite-vitest.md)
+for Vite + Vitest and [`docs/examples/nextjs.md`](docs/examples/nextjs.md) for
+Next.js.
 
-CI gate flags: `--min-coverage <pct>` fails below a coverage threshold, `--fail-on-unmocked` fails on any unmocked call, `--fail-on-stale` fails on any stale handler, and `--fail-on-empty` fails when the scan finds no handlers and no API calls (usually a sign of misconfigured globs or `--cwd`). An empty scan always prints a warning to stderr.
+Common CI gates:
+
+```bash
+npx msw-inspector --min-coverage 90
+npx msw-inspector --fail-on-unmocked
+npx msw-inspector --fail-on-stale
+npx msw-inspector --fail-on-empty
+```
+
+`--fail-on-empty` fails when the scan finds no handlers and no API calls, which usually means misconfigured globs or `--cwd`; an empty scan always prints a warning to stderr.
 
 ### Exit codes
 
@@ -54,37 +144,10 @@ CI gate flags: `--min-coverage <pct>` fails below a coverage threshold, `--fail-
 | 1 | A gate failed (`--min-coverage`, `--fail-on-unmocked`, `--fail-on-stale`, `--fail-on-empty`) or the analysis errored. |
 | 2 | Usage error: unknown flag or invalid value for `--format`, `--min-coverage`, or `--limit`. |
 
-If your app uses relative URLs but you want origin-aware matching, set `--base-url`. That resolves relative handlers and API calls against one canonical origin, which is useful when the same pathname exists on multiple backends.
 
-## Output
+## JSON report
 
-Text output looks like this:
-
-```bash
-✓ 23 handlers found
-✓ 31 API calls found
-✗ 8 unmocked endpoints
-✗ 3 stale mocks
-
-Coverage: 74% (23/31)
-
-Unmocked API calls:
-  POST /api/chat  src/chat.ts:12
-  GET /api/profile  src/profile.ts:33
-  … and 6 more
-
-Stale handlers:
-  GET /v1/legacy  src/mocks/handlers.ts:8
-  … and 2 more
-```
-
-Text output lists up to 10 unmocked calls and stale handlers with their source locations. Use `--limit <count>` to show more or fewer.
-
-Here is a real run against `typejung.com`:
-
-![Real dogfood run against typejung.com](./assets/typejung-dogfood.svg)
-
-The JSON report written by `--report-file` includes:
+The JSON report written by `--report-file` includes a stable schema version and a summary:
 
 ```json
 {
@@ -102,9 +165,13 @@ The JSON report written by `--report-file` includes:
 }
 ```
 
-## Example Report
+## Dogfooding
 
-Dogfood run on `typejung.com`:
+Here is a real run against `typejung.com`:
+
+![Real dogfood run against typejung.com](./assets/typejung-dogfood.svg)
+
+Dogfood summary:
 
 ```json
 {
@@ -133,16 +200,6 @@ All file locations in the report are relative to the scanned directory (`--cwd`)
 
 The full report format is documented in [docs/report-schema.md](./docs/report-schema.md) and defined machine-readably in [schema/coverage-report.v1.json](./schema/coverage-report.v1.json), which ships with the npm package.
 
-## Dogfooding
-
-I ran the analyzer against three real repositories:
-
-- `typejung.com`: `0` handlers, `24` API calls, `24` unmocked endpoints, `7` unsupported dynamic patterns.
-- `msw`: narrowed to the browser test slice, `191` handlers, `2` API calls, `190` stale mocks, `28` unsupported patterns.
-- `oss-msw`: same slice, `191` handlers, `2` API calls, `189` stale mocks, `28` unsupported patterns.
-
-The strongest product signal came from `typejung.com`: it immediately showed that a real app could have a non-trivial API surface with zero MSW coverage. The two MSW repos exercised the other side of the problem, where handlers accumulate and drift stale when the active request surface gets narrower.
-
 ## Supported patterns
 
 The first release is intentionally narrow:
@@ -152,6 +209,8 @@ The first release is intentionally narrow:
 - handler matchers from string literals, static template literals, static `const`s, `new URL(...).href`, `new URL(...).toString()`, and `String(new URL(...))`
 - `fetch(...)`, `window.fetch(...)`, `globalThis.fetch(...)`, and `fetch(new Request(...))` with static arguments
 - common `axios` call shapes, including `axios.get(...)`, `axios.request(...)`, `axios(...)`, and same-file `axios.create(...)` instances
+
+Unsupported dynamic or ambiguous patterns are included in the report so you can decide whether to simplify the code, add explicit handlers, or ignore the pattern.
 
 ## GitHub Action
 
@@ -187,6 +246,19 @@ jobs:
 
 The action does not compute a baseline delta yet. It publishes the current report cleanly and predictably.
 
+## Node API
+
+```ts
+import { analyzeProject, formatCoverageReport } from 'msw-inspector-cli'
+
+const report = await analyzeProject({
+  cwd: process.cwd(),
+  baseUrl: 'https://api.example.com',
+})
+
+console.log(formatCoverageReport(report))
+```
+
 ## Limitations
 
 - It does not try to infer custom wrapper helpers.
@@ -195,7 +267,13 @@ The action does not compute a baseline delta yet. It publishes the current repor
 - It reports dynamic or ambiguous patterns as unsupported instead of guessing.
 - Calls whose HTTP method cannot be resolved statically are reported as `ambiguousCalls` when their path matches a handler; they never count as mocked or unmocked, and `--fail-on-unmocked` ignores them.
 
-## Local Development
+## Project health
+
+- [Security policy](./SECURITY.md)
+- [Support guide](./SUPPORT.md)
+- [Code of conduct](./CODE_OF_CONDUCT.md)
+
+## Local development
 
 ```bash
 npm install

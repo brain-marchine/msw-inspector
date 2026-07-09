@@ -14,9 +14,15 @@ All notable changes to this project should be documented here.
 - Added support for `fetch(new Request(url, init))` with static arguments.
 - The JSON report contract is documented in `docs/report-schema.md` and defined in `schema/coverage-report.v1.json`, which ships with the npm package and is validated in tests.
 - `felmonon/msw-inspector-action` is now the canonical GitHub Action; this repository no longer ships `action.yml` or committed `dist/` output.
-- CI now tests Node 18/20/22 on Ubuntu and Windows.
+- CI now tests Node 20/22/24 on Ubuntu and Windows.
 - Added end-to-end CLI tests covering output formats, `--report-file`, and all exit codes.
 - Added contributor documentation, issue templates, a pull request template, roadmap, and release process notes.
+
+## v0.1.5
+
+- Text output lists unsupported patterns with file, line, kind, and reason (capped at 5).
+- Added an npm publish workflow for releases.
+- Dependency updates via Dependabot, including TypeScript 6.
 
 ## v0.1.4
 
