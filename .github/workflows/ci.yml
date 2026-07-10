@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+# CI only needs to read repository contents.
+permissions:
+  contents: read
+
 jobs:
   matrix-test:
     name: test (${{ matrix.os }}, ${{ matrix.node }})
