@@ -44,7 +44,7 @@ export function formatCoverageReport(report: CoverageReport, options: FormatOpti
 
   if (report.unsupported.length > 0) {
     lines.push('', `${pc.yellow('◌')} ${report.unsupported.length} unsupported patterns skipped`)
-    const shown = report.unsupported.slice(0, 5)
+    const shown = report.unsupported.slice(0, limit)
     for (const pattern of shown) {
       lines.push(
         `  ${pattern.location.filePath}:${pattern.location.line} (${pattern.kind}) — ${pattern.reason}`,
@@ -52,7 +52,7 @@ export function formatCoverageReport(report: CoverageReport, options: FormatOpti
     }
     const remaining = report.unsupported.length - shown.length
     if (remaining > 0) {
-      lines.push(`  ...and ${remaining} more`)
+      lines.push(`  … and ${remaining} more`)
     }
   }
 

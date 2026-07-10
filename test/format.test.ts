@@ -152,16 +152,16 @@ describe('formatCoverageReport', () => {
     expect(output).toContain('dynamic pattern')
   })
 
-  it('caps the listed unsupported patterns at 5 and reports the remaining count', () => {
+  it('caps the listed unsupported patterns at the configured limit and reports the remaining count', () => {
     const report = baseReport({
       unsupported: Array.from({ length: 7 }, (_, i) =>
         unsupported({ reason: `reason ${i}`, location: { filePath: `file${i}.ts`, line: i + 1, column: 1 } }),
       ),
     })
-    const output = stripAnsi(formatCoverageReport(report))
+    const output = stripAnsi(formatCoverageReport(report, { limit: 3 }))
     const lines = output.split('\n')
     const listedLines = lines.filter((line) => line.trim().startsWith('file'))
-    expect(listedLines).toHaveLength(5)
-    expect(output).toContain('...and 2 more')
+    expect(listedLines).toHaveLength(3)
+    expect(output).toContain('… and 4 more')
   })
 })
