@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 
 import fg from 'fast-glob'
-import { Node, Project, SyntaxKind, VariableDeclarationKind, type SourceFile } from 'ts-morph'
+import { Node, Project, SyntaxKind, VariableDeclarationKind, type Identifier, type SourceFile, type VariableDeclaration } from 'ts-morph'
 
 import { DEFAULT_EXCLUDE_GLOBS, DEFAULT_HANDLER_GLOBS } from './defaults'
 import { createPathPattern, createRegExpPattern, createRecordId, normalizeLocation, normalizeMethod } from './normalize'
@@ -20,8 +20,6 @@ interface ImportBindings {
 }
 
 interface StaticContext {
-  sourceFile: SourceFile
-  filePath: string
   baseUrl?: string
   constCache: Map<string, string | null>
   visiting: Set<string>
@@ -58,8 +56,6 @@ export async function scanHandlers(options: AnalyzerOptions): Promise<HandlerSca
   for (const sourceFile of sourceFiles) {
     const bindings = collectImportBindings(sourceFile)
     const context: StaticContext = {
-      sourceFile,
-      filePath: sourceFile.getFilePath(),
       baseUrl: options.baseUrl,
       constCache: new Map(),
       visiting: new Set(),
@@ -145,7 +141,7 @@ function identifyHandlerCall(
 
   const root = expression.getExpression()
   if (Node.isIdentifier(root)) {
-    const api = bindings.direct.get(root.getText())
+    const api = resolveMswApiBinding(root, bindings)
     if (!api) {
       return null
     }
@@ -158,7 +154,7 @@ function identifyHandlerCall(
 
   if (Node.isPropertyAccessExpression(root)) {
     const namespace = root.getExpression()
-    if (!Node.isIdentifier(namespace) || !bindings.namespaces.has(namespace.getText())) {
+    if (!Node.isIdentifier(namespace) || !isMswNamespaceBinding(namespace, bindings)) {
       return null
     }
 
@@ -174,6 +170,67 @@ function identifyHandlerCall(
   }
 
   return null
+}
+
+function resolveMswApiBinding(identifier: Identifier, bindings: ImportBindings): MswApi | null {
+  const symbol = identifier.getSymbol()
+  if (!symbol) {
+    return hasSyntacticShadow(identifier) ? null : bindings.direct.get(identifier.getText()) ?? null
+  }
+
+  for (const declaration of symbol.getDeclarations()) {
+    if (!Node.isImportSpecifier(declaration) || !isMswImportDeclaration(declaration)) {
+      continue
+    }
+
+    const imported = declaration.getName()
+    if (imported === 'http' || imported === 'rest') {
+      return imported
+    }
+  }
+
+  return null
+}
+
+function isMswNamespaceBinding(identifier: Identifier, bindings: ImportBindings): boolean {
+  const symbol = identifier.getSymbol()
+  if (!symbol) {
+    return !hasSyntacticShadow(identifier) && bindings.namespaces.has(identifier.getText())
+  }
+
+  return symbol.getDeclarations().some(
+    (declaration) => Node.isNamespaceImport(declaration) && isMswImportDeclaration(declaration),
+  )
+}
+
+function isMswImportDeclaration(node: import('ts-morph').Node): boolean {
+  return node.getFirstAncestorByKind(SyntaxKind.ImportDeclaration)?.getModuleSpecifierValue() === 'msw'
+}
+
+function hasSyntacticShadow(identifier: Identifier): boolean {
+  const name = identifier.getText()
+
+  for (const ancestor of identifier.getAncestors()) {
+    if (Node.isFunctionLikeDeclaration(ancestor) && ancestor.getParameters().some((parameter) => parameter.getName() === name)) {
+      return true
+    }
+
+    if (!Node.isBlock(ancestor) && !Node.isSourceFile(ancestor)) {
+      continue
+    }
+
+    for (const statement of ancestor.getStatements()) {
+      if (Node.isVariableStatement(statement) && statement.getDeclarations().some((declaration) => declaration.getName() === name)) {
+        return true
+      }
+
+      if (Node.isFunctionDeclaration(statement) && statement.getName() === name) {
+        return true
+      }
+    }
+  }
+
+  return false
 }
 
 function resolveHandlerMatcher(node: import('ts-morph').Node, context: StaticContext) {
@@ -288,10 +345,15 @@ function resolveStaticRegExp(node: import('ts-morph').Node, context: StaticConte
     const [patternArg, flagsArg] = node.getArguments()
     const pattern = patternArg ? resolveStaticString(patternArg, context) : null
     const flags = flagsArg ? resolveStaticString(flagsArg, context) : ''
-    if (pattern === null) {
+    if (pattern === null || flags === null) {
       return null
     }
-    return `/${escapeRegExpLiteral(pattern)}/${flags ?? ''}`
+
+    try {
+      return new RegExp(pattern, flags).toString()
+    } catch {
+      return null
+    }
   }
 
   if (Node.isIdentifier(node)) {
@@ -324,11 +386,7 @@ function resolveStaticRegExp(node: import('ts-morph').Node, context: StaticConte
 
 function resolveUrlLikeString(node: import('ts-morph').Node, context: StaticContext): string | null {
   if (Node.isPropertyAccessExpression(node) && node.getName() === 'href') {
-    const expression = node.getExpression().asKind(SyntaxKind.PropertyAccessExpression)
-    if (expression) {
-      return resolveUrlExpression(expression.getExpression(), context)
-    }
-    return null
+    return resolveUrlExpression(node.getExpression(), context)
   }
 
   if (Node.isCallExpression(node) && isToStringCall(node)) {
@@ -359,12 +417,12 @@ function resolveUrlExpression(node: import('ts-morph').Node, context: StaticCont
     const [pathArg, baseArg] = node.getArguments()
     const path = pathArg ? resolveStaticString(pathArg, context) : null
     const base = baseArg ? resolveStaticString(baseArg, context) : null
-    if (path === null || base === null) {
+    if (path === null) {
       return null
     }
 
     try {
-      return new URL(path, base).toString()
+      return base === null ? new URL(path).toString() : new URL(path, base).toString()
     } catch {
       return null
     }
@@ -402,17 +460,47 @@ function resolveUrlExpression(node: import('ts-morph').Node, context: StaticCont
   return resolveStaticString(node, context)
 }
 
-function resolveConstDeclaration(identifier: import('ts-morph').Identifier) {
-  const sourceFile = identifier.getSourceFile()
-  const name = identifier.getText()
+function resolveConstDeclaration(identifier: Identifier): VariableDeclaration | null {
+  const symbol = identifier.getSymbol()
+  if (!symbol) {
+    return resolveLexicalConstDeclaration(identifier)
+  }
 
-  for (const statement of sourceFile.getVariableStatements()) {
-    if (statement.getDeclarationKind() !== VariableDeclarationKind.Const) {
+  for (const declaration of symbol.getDeclarations()) {
+    if (!Node.isVariableDeclaration(declaration)) {
       continue
     }
 
-    for (const declaration of statement.getDeclarations()) {
-      if (declaration.getName() === name) {
+    const statement = declaration.getVariableStatement()
+    if (!statement || statement.getDeclarationKind() !== VariableDeclarationKind.Const) {
+      continue
+    }
+
+    if (declaration.getSourceFile().getFilePath() !== identifier.getSourceFile().getFilePath()) {
+      continue
+    }
+
+    return declaration
+  }
+
+  return null
+}
+
+function resolveLexicalConstDeclaration(identifier: Identifier): VariableDeclaration | null {
+  const name = identifier.getText()
+
+  for (const ancestor of identifier.getAncestors()) {
+    if (!Node.isBlock(ancestor) && !Node.isSourceFile(ancestor)) {
+      continue
+    }
+
+    for (const statement of ancestor.getVariableStatements()) {
+      if (statement.getDeclarationKind() !== VariableDeclarationKind.Const) {
+        continue
+      }
+
+      const declaration = statement.getDeclarations().find((candidate) => candidate.getName() === name)
+      if (declaration) {
         return declaration
       }
     }
@@ -456,10 +544,6 @@ function stripQueryAndHash(value: string): string {
   }
 
   return trimmed.replace(/[?#].*$/, '')
-}
-
-function escapeRegExpLiteral(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function describeUnsupportedMatcher(node: import('ts-morph').Node, context: StaticContext): string {
