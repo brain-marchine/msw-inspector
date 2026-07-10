@@ -2,6 +2,10 @@
 
 All notable changes to this project should be documented here.
 
+## v0.3.2
+
+- Added the documented `--version` CLI flag so installed users can report the exact package version reliably.
+
 ## v0.3.1
 
 - Corrected static MSW handler resolution for direct and const-backed `new URL(...).href` values, including absolute URLs without a base.

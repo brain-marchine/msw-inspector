@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { version as PACKAGE_VERSION } from '../package.json'
 import { runCli } from '../src/cli-main'
 
 // CI environments force terminal colors; assertions compare plain text.
@@ -69,6 +70,14 @@ async function createProject(): Promise<string> {
 }
 
 describe('runCli', () => {
+  it('prints the package version and exits 0', async () => {
+    const result = await run(['--version'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.trim()).toBe(PACKAGE_VERSION)
+    expect(result.stderr).toBe('')
+  })
+
   it('prints a text summary and exits 0 by default', async () => {
     const cwd = await createProject()
     const result = await run(['--cwd', cwd])

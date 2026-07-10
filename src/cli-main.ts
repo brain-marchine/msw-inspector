@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { version as PACKAGE_VERSION } from '../package.json'
 import { Command, CommanderError } from 'commander'
 import { analyzeProject } from './core/analyze'
 import { DEFAULT_EXCLUDE_GLOBS, DEFAULT_HANDLER_GLOBS, DEFAULT_SOURCE_GLOBS } from './core/defaults'
@@ -28,6 +29,7 @@ export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<num
   program
     .name('msw-inspector')
     .description('Find gaps in your MSW mock coverage.')
+    .version(PACKAGE_VERSION)
     .option('--handlers <globs...>', 'Override handler file globs.', DEFAULT_HANDLER_GLOBS)
     .option('--sources <globs...>', 'Override source file globs.', DEFAULT_SOURCE_GLOBS)
     .option('--exclude <globs...>', 'Exclude file globs.', DEFAULT_EXCLUDE_GLOBS)
